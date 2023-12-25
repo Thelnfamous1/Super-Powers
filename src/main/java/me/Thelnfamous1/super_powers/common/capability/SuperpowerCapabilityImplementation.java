@@ -6,6 +6,8 @@ import net.minecraft.nbt.CompoundTag;
 public class SuperpowerCapabilityImplementation implements SuperpowerCapabilityInterface {
     public static final String TAG_KEY = "Superpower";
     private Superpower superpower = Superpower.NONE;
+    private boolean firingBeam;
+    private int ticksFiringBeam;
 
     @Override
     public Superpower getSuperpower() {
@@ -15,6 +17,27 @@ public class SuperpowerCapabilityImplementation implements SuperpowerCapabilityI
     @Override
     public void setSuperpower(Superpower superpower) {
         this.superpower = superpower;
+    }
+
+    @Override
+    public boolean isFiringBeam() {
+        return this.firingBeam;
+    }
+
+    @Override
+    public void setFiringBeam(boolean firingBeam) {
+        this.firingBeam = firingBeam;
+        this.setTicksFiringBeam(0);
+    }
+
+    @Override
+    public int getTicksFiringBeam() {
+        return this.ticksFiringBeam;
+    }
+
+    @Override
+    public void setTicksFiringBeam(int ticksFiringBeam) {
+        this.ticksFiringBeam = ticksFiringBeam;
     }
 
     @Override

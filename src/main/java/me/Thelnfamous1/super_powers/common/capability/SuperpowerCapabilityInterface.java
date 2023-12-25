@@ -9,4 +9,12 @@ public interface SuperpowerCapabilityInterface extends INBTSerializable<Compound
     Superpower getSuperpower();
 
     void setSuperpower(Superpower superpower);
+
+    boolean isFiringBeam();
+
+    void setFiringBeam(boolean firingBeam);
+
+    int getTicksFiringBeam();
+
+    void setTicksFiringBeam(int ticksFiringBeam);
 }

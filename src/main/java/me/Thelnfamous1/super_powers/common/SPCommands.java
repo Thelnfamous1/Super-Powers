@@ -8,11 +8,14 @@ import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import me.Thelnfamous1.super_powers.SuperPowers;
 import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapability;
 import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapabilityInterface;
+import me.Thelnfamous1.super_powers.common.network.S2CSetSuperpowerPacket;
+import me.Thelnfamous1.super_powers.common.network.SPNetwork;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.network.PacketDistributor;
 
 public class SPCommands {
 
@@ -50,6 +53,7 @@ public class SPCommands {
             throw new DynamicCommandExceptionType((key) -> Component.translatable(COMMANDS_SUPERPOWER_FAILURE, player.getDisplayName(), key)).create(superpower.getSerializedName());
         } else {
             capability.setSuperpower(superpower);
+            SPNetwork.SYNC_CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), new S2CSetSuperpowerPacket(player, capability));
             pSource.sendSuccess(Component.translatable(COMMANDS_SUPERPOWER_SUCCESS, player.getDisplayName(), superpower.getColoredDisplayName()), true);
             return 0;
         }
