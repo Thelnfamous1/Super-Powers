@@ -1,0 +1,13 @@
+{
+  "commands.super_powers.superpower.failure": "%s already has superpower %s",
+  "commands.super_powers.superpower.query": "The current superpower for %s is %s",
+  "commands.super_powers.superpower.success": "The current superpower for %s has been set to %s",
+  "key.category.super_powers": "Super Powers",
+  "key.super_powers.use_ability": "Use Ability",
+  "superpower.super_powers.earth": "Earth",
+  "superpower.super_powers.fire": "Fire",
+  "superpower.super_powers.ice": "Ice",
+  "superpower.super_powers.lightning": "Lightning",
+  "superpower.super_powers.none": "None",
+  "superpower.super_powers.telekinesis": "Telekinesis"
+}

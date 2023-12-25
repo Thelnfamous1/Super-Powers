@@ -1,0 +1,10 @@
+{
+  "required": true,
+  "package": "me.Thelnfamous1.super_powers.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "super_powers.refmap.json",
+  "mixins": [
+  ],
+  "client": [],
+  "minVersion": "0.8.5"
+}
