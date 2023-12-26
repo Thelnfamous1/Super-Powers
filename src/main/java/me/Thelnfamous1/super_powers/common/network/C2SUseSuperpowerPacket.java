@@ -2,14 +2,12 @@ package me.Thelnfamous1.super_powers.common.network;
 
 import me.Thelnfamous1.super_powers.common.Superpower;
 import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapability;
-import me.Thelnfamous1.super_powers.common.entity.EnergyBeam;
+import me.Thelnfamous1.super_powers.common.util.SuperpowerHelper;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 
-import java.util.List;
 import java.util.function.Supplier;
 
 public class C2SUseSuperpowerPacket {
@@ -45,9 +43,7 @@ public class C2SUseSuperpowerPacket {
                         SPNetwork.SYNC_CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), new S2CSetSuperpowerPacket(player, cap));
                     });
                     case STOP -> SuperpowerCapability.getOptional(player).ifPresent(cap -> {
-                        cap.setFiringBeam(false);
-                        List<EnergyBeam> beams = player.level.getEntitiesOfClass(EnergyBeam.class, player.getBoundingBox().inflate(1), energyBeam -> energyBeam.getOwner() == player);
-                        beams.forEach(Entity::discard);
+                        SuperpowerHelper.deactivateHeldPowers(player);
                         SPNetwork.SYNC_CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), new S2CSetSuperpowerPacket(player, cap));
                     });
                 }

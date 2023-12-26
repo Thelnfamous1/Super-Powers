@@ -1,13 +1,17 @@
 package me.Thelnfamous1.super_powers.common;
 
+import com.mojang.datafixers.util.Either;
 import me.Thelnfamous1.super_powers.SuperPowers;
 import me.Thelnfamous1.super_powers.common.util.SuperpowerHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
@@ -16,11 +20,11 @@ import java.util.function.Consumer;
 
 public enum Superpower implements StringRepresentable {
     NONE(0, "none", DyeColor.WHITE),
-    LIGHTNING(1, "lightning", DyeColor.LIGHT_BLUE, SuperpowerHelper::castLightning, SuperpowerHelper::fireBeam),
-    FIRE(2, "fire", DyeColor.ORANGE, SuperpowerHelper::castFireball, SuperpowerHelper::fireBeam),
-    ICE(3, "ice", DyeColor.LIGHT_BLUE, SuperpowerHelper::castSnowball, SuperpowerHelper::fireBeam),
+    LIGHTNING(1, "lightning", DyeColor.LIGHT_BLUE, SuperpowerHelper::castLightning, SuperpowerHelper::fireBeam, SuperpowerHelper::tickLightning),
+    FIRE(2, "fire", DyeColor.ORANGE, SuperpowerHelper::castFireball, SuperpowerHelper::fireBeam, SuperpowerHelper::tickFire),
+    ICE(3, "ice", DyeColor.LIGHT_BLUE, SuperpowerHelper::castSnowball, SuperpowerHelper::fireBeam, SuperpowerHelper::tickIce),
     EARTH(4, "earth", DyeColor.GREEN, SuperpowerHelper::castBonemeal),
-    TELEKINESIS(5, "telekinesis", DyeColor.PURPLE, SuperpowerHelper::castNone, SuperpowerHelper::castNone);
+    TELEKINESIS(5, "telekinesis", DyeColor.PURPLE, SuperpowerHelper::castTelekinesis, SuperpowerHelper::castNone, SuperpowerHelper::tickTelekinesis);
 
     public static final StringRepresentable.EnumCodec<Superpower> CODEC = StringRepresentable.fromEnum(Superpower::values);
     private static final Superpower[] BY_ID = Arrays.stream(values()).sorted(Comparator.comparingInt(Superpower::getId)).toArray(Superpower[]::new);
@@ -29,22 +33,24 @@ public enum Superpower implements StringRepresentable {
     private final DyeColor dyeColor;
     private final Consumer<Player> primary;
     private final Consumer<Player> secondary;
+    private final TickConsumer tickUse;
     private final int id;
 
     Superpower(int id, String key, DyeColor dyeColor){
-        this(id, key, dyeColor, SuperpowerHelper::castNone, SuperpowerHelper::castNone);
+        this(id, key, dyeColor, SuperpowerHelper::castNone, SuperpowerHelper::castNone, SuperpowerHelper::noTick);
     }
 
     Superpower(int id, String key, DyeColor dyeColor, Consumer<Player> primary){
-        this(id, key, dyeColor, primary, SuperpowerHelper::castNone);
+        this(id, key, dyeColor, primary, SuperpowerHelper::castNone, SuperpowerHelper::noTick);
     }
 
-    Superpower(int id, String key, DyeColor dyeColor, Consumer<Player> primary, Consumer<Player> secondary){
+    Superpower(int id, String key, DyeColor dyeColor, Consumer<Player> primary, Consumer<Player> secondary, TickConsumer tickUse){
         this.id = id;
         this.key = key;
         this.dyeColor = dyeColor;
         this.primary = primary;
         this.secondary = secondary;
+        this.tickUse = tickUse;
     }
 
     public static Superpower byId(int id) {
@@ -62,6 +68,10 @@ public enum Superpower implements StringRepresentable {
 
     public void activateSecondary(Player player){
         this.secondary.accept(player);
+    }
+
+    public void tickUse(Entity shooter, Either<EntityHitResult, BlockHitResult> hitResultEither, int ticksFiringBeam){
+        this.tickUse.apply(shooter, hitResultEither, ticksFiringBeam);
     }
 
     public MutableComponent getColoredDisplayName(){
@@ -91,6 +101,11 @@ public enum Superpower implements StringRepresentable {
 
     public boolean isNone(){
         return this == NONE;
+    }
+
+    @FunctionalInterface
+    public interface TickConsumer{
+        void apply(Entity shooter, Either<EntityHitResult, BlockHitResult> hitResult, int ticksFiringBeam);
     }
 
 

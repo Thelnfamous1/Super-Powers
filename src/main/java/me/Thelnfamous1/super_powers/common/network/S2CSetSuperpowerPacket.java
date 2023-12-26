@@ -15,23 +15,27 @@ public class S2CSetSuperpowerPacket {
 
     private final CompoundTag data;
     private final boolean firingBeam;
+    private final int targetId;
 
     public S2CSetSuperpowerPacket(Entity entity, SuperpowerCapabilityInterface cap){
         this.id = entity.getId();
         this.data = cap.serializeNBT();
         this.firingBeam = cap.isFiringBeam();
+        this.targetId = cap.getTelekinesisTarget(entity.level).map(Entity::getId).orElse(0);
     }
 
     public S2CSetSuperpowerPacket(FriendlyByteBuf buf){
         this.id = buf.readInt();
         this.data = buf.readNbt();
         this.firingBeam = buf.readBoolean();
+        this.targetId = buf.readInt();
     }
 
     public void write(FriendlyByteBuf buf){
         buf.writeInt(this.id);
         buf.writeNbt(this.data);
         buf.writeBoolean(this.firingBeam);
+        buf.writeInt(this.targetId);
     }
 
     public void handle(Supplier<NetworkEvent.Context> ctx){
@@ -41,6 +45,7 @@ public class S2CSetSuperpowerPacket {
                 SuperpowerCapability.getOptional(entity).ifPresent(cap -> {
                     cap.deserializeNBT(this.data);
                     cap.setFiringBeam(this.firingBeam);
+                    cap.setTelekinesisTarget(Minecraft.getInstance().level.getEntity(this.targetId));
                 });
             }
         });

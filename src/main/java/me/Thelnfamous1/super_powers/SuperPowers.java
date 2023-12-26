@@ -60,15 +60,8 @@ public class SuperPowers {
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.Clone event) -> SuperpowerCapability.clone(event));
         MinecraftForge.EVENT_BUS.addGenericListener(Entity.class, SuperpowerCapabilityAttacher::attach);
         MinecraftForge.EVENT_BUS.addListener((TickEvent.PlayerTickEvent event) -> {
-            if(event.phase == TickEvent.Phase.END && !event.player.level.isClientSide){
-                SuperpowerCapability.getOptional(event.player).ifPresent(cap -> {
-                    if (cap.isFiringBeam()) {
-                        cap.setTicksFiringBeam(cap.getTicksFiringBeam() + 1);
-                        SuperpowerHelper.tickBeam(event.player, cap.getSuperpower(), cap.getTicksFiringBeam());
-                    } else{
-                        cap.setTicksFiringBeam(0);
-                    }
-                });
+            if(event.phase == TickEvent.Phase.END){
+                SuperpowerHelper.tickActivePowers(event.player);
             }
         });
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();

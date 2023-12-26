@@ -1,18 +1,22 @@
 package me.Thelnfamous1.super_powers.common.util;
 
+import com.mojang.datafixers.util.Either;
 import me.Thelnfamous1.super_powers.common.Superpower;
 import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapability;
+import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapabilityInterface;
 import me.Thelnfamous1.super_powers.common.entity.EnergyBeam;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.EntityTypeTags;
+import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.item.FallingBlockEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.entity.projectile.SmallFireball;
@@ -20,31 +24,33 @@ import net.minecraft.world.entity.projectile.Snowball;
 import net.minecraft.world.item.BoneMealItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.*;
 
 public class SuperpowerHelper {
 
     public static final String ICE_SUPERPOWER_TAG = "%s:ice";
     public static final int USE_BONEMEAL_EVENT_ID = 1505;
     public static final int SHOOT_FIREBALL_EVENT_ID = 1018;
+    public static final double HIT_DISTANCE = 1024D;
 
     public static void castNone(Entity ignoredShooter){
     }
 
+    public static void noTick(Entity ignoredShooter, Either<EntityHitResult, BlockHitResult> ignoredHitResultEither, int ignoredTicksFiringBeam){
+    }
+
     public static void fireBeam(LivingEntity shooter){
-        SuperpowerCapability.getOptional(shooter).ifPresent(cap -> {
-            cap.setFiringBeam(true);
-            EnergyBeam energyBeam = new EnergyBeam(shooter.level, shooter);
-            shooter.level.addFreshEntity(energyBeam);
-        });
+        SuperpowerCapability.getOptional(shooter).ifPresent(cap -> fireBeamRaw(shooter, cap));
+    }
+
+    private static void fireBeamRaw(LivingEntity shooter, SuperpowerCapabilityInterface cap) {
+        cap.setFiringBeam(true);
+        EnergyBeam energyBeam = new EnergyBeam(shooter.level, shooter);
+        shooter.level.addFreshEntity(energyBeam);
     }
 
     public static void castBonemeal(LivingEntity shooter){
@@ -103,63 +109,130 @@ public class SuperpowerHelper {
     }
 
     public static HitResult getHitResult(Entity shooter){
-        Vec3 from = shooter.getEyePosition();
-        Vec3 to = from.add(shooter.getLookAngle().scale(1024));
-        HitResult hitresult = shooter.level.clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, shooter));
-        if (hitresult.getType() != HitResult.Type.MISS) {
-            to = hitresult.getLocation();
+        Vec3 start = shooter.getEyePosition(1.0F);
+        HitResult pick = shooter.pick(HIT_DISTANCE, 1.0F, false);
+        double distSqr = Mth.square(HIT_DISTANCE);
+        if (pick.getType() != HitResult.Type.MISS) {
+            distSqr = pick.getLocation().distanceToSqr(start);
         }
-        EntityHitResult entityHitResult = ProjectileUtil.getEntityHitResult(shooter.level, shooter, from, to, shooter.getBoundingBox().expandTowards(to).inflate(1.0D), target -> canHitEntity(shooter, target));
+
+        Vec3 viewVector = shooter.getViewVector(1.0F);
+        Vec3 to = start.add(viewVector.scale(HIT_DISTANCE));
+        AABB searchBox = shooter.getBoundingBox().expandTowards(viewVector.scale(HIT_DISTANCE)).inflate(1D);
+        EntityHitResult entityHitResult = ProjectileUtil.getEntityHitResult(shooter, start, to, searchBox,
+                (target) -> !target.isSpectator() && target.isPickable(), distSqr);
+
         if (entityHitResult != null) {
-            hitresult = entityHitResult;
+            pick = entityHitResult;
         }
-        return hitresult;
-    }
-
-    public static boolean canHitEntity(Entity shooter, Entity target) {
-        if (!target.isSpectator() && target.isAlive() && target.isPickable()) {
-            return !shooter.isPassengerOfSameVehicle(target);
-        } else {
-            return false;
-        }
-    }
-
-    public static void tickBeam(Entity shooter, Superpower superpower, int ticksFiringBeam) {
-        if(ticksFiringBeam % 10 == 0){
-            HitResult hitResult = getHitResult(shooter);
-            if(hitResult instanceof EntityHitResult entityHitResult){
-                Entity target = entityHitResult.getEntity();
-                switch (superpower){
-                    case LIGHTNING -> {
-                        target.invulnerableTime = 0;
-                        target.hurt(DamageSource.LIGHTNING_BOLT, 4.0F);
-                    }
-                    case FIRE -> {
-                        target.setSecondsOnFire(5); // same as small fireball
-                    }
-                    case ICE -> {
-                        target.setTicksFrozen(600); // decays at 2 ticks per tick, so we need double the desired ticks of 300
-                    }
-                }
-            }
-            else if(hitResult instanceof BlockHitResult blockHitResult){
-                BlockPos blockPos = blockHitResult.getBlockPos();
-                switch (superpower){
-                    case FIRE -> {
-                        BlockState blockState = shooter.level.getBlockState(blockPos);
-                        if(!blockState.isAir() && !blockState.getMaterial().isLiquid()){
-                            shooter.level.gameEvent(shooter, GameEvent.BLOCK_PLACE, blockPos);
-                            shooter.level.setBlockAndUpdate(blockPos, Blocks.LAVA.defaultBlockState());
-                        }
-                    }
-                }
-            }
-        }
+        return pick;
     }
 
     public static void applyFreezeDamage(Entity entity, int base) {
         if(entity.canFreeze()){
             entity.hurt(DamageSource.FREEZE, entity.getType().is(EntityTypeTags.FREEZE_HURTS_EXTRA_TYPES) ? 5 * base : base);
+        }
+    }
+
+    public static void castTelekinesis(LivingEntity shooter) {
+        SuperpowerCapability.getOptional(shooter).ifPresent(cap -> {
+            HitResult hitResult = getHitResult(shooter);
+            if(hitResult instanceof BlockHitResult blockHitResult){
+                fireBeamRaw(shooter, cap);
+                BlockPos blockPos = blockHitResult.getBlockPos();
+                BlockState blockState = shooter.level.getBlockState(blockPos);
+                shooter.level.removeBlock(blockPos, false);
+                FallingBlockEntity fallingBlock = FallingBlockEntity.fall(shooter.level, blockPos, blockState);
+                fallingBlock.setNoGravity(true);
+                cap.setTelekinesisTarget(fallingBlock);
+            }
+        });
+    }
+
+    public static void deactivateHeldPowers(Entity shooter) {
+        SuperpowerCapability.getOptional(shooter).ifPresent(cap -> {
+            cap.setFiringBeam(false);
+            shooter.level.getEntitiesOfClass(EnergyBeam.class, shooter.getBoundingBox().inflate(1D),
+                            energyBeam -> energyBeam.getOwner() == shooter)
+                    .forEach(Entity::discard);
+            cap.getTelekinesisTarget(shooter.level).ifPresent(target -> target.setNoGravity(false));
+            cap.setTelekinesisTarget(null);
+        });
+    }
+
+    public static void tickActivePowers(Entity shooter) {
+        SuperpowerCapability.getOptional(shooter).ifPresent(cap -> {
+            if (cap.isFiringBeam()) {
+                onBeamTick(shooter, cap.getSuperpower(), cap.getTicksFiringBeam());
+                cap.setTicksFiringBeam(cap.getTicksFiringBeam() + 1);
+            } else{
+                cap.setTicksFiringBeam(0);
+            }
+        });
+    }
+
+    public static void onBeamTick(Entity shooter, Superpower superpower, int ticksFiringBeam) {
+        HitResult hitResult = getHitResult(shooter);
+        Either<EntityHitResult, BlockHitResult> hitResultEither;
+        if(hitResult instanceof EntityHitResult entityHitResult) hitResultEither = Either.left(entityHitResult);
+        else hitResultEither = Either.right((BlockHitResult) hitResult);
+        superpower.tickUse(shooter, hitResultEither, ticksFiringBeam);
+    }
+
+    public static void tickFire(Entity shooter, Either<EntityHitResult, BlockHitResult> hitResultEither, int ticksFiringBeam){
+        if(ticksFiringBeam % 10 == 0){
+            hitResultEither.mapBoth(entityHitResult -> {
+                Entity entity = entityHitResult.getEntity();
+                entity.setSecondsOnFire(5);
+                return true;
+            }, blockHitResult -> {
+                BlockPos blockPos = blockHitResult.getBlockPos();
+                BlockState blockState = shooter.level.getBlockState(blockPos);
+                if(!blockState.isAir() && !blockState.getMaterial().isLiquid()){
+                    shooter.level.gameEvent(shooter, GameEvent.BLOCK_PLACE, blockPos);
+                    shooter.level.setBlockAndUpdate(blockPos, Blocks.LAVA.defaultBlockState());
+                }
+                return true;
+            });
+        }
+    }
+
+    public static void tickLightning(Entity shooter, Either<EntityHitResult, BlockHitResult> hitResultEither, int ticksFiringBeam){
+        if(ticksFiringBeam % 10 == 0){
+            hitResultEither.ifLeft(entityHitResult -> {
+                Entity entity = entityHitResult.getEntity();
+                entity.hurt(DamageSource.LIGHTNING_BOLT, 4.0F);
+            });
+        }
+    }
+
+    public static void tickIce(Entity shooter, Either<EntityHitResult, BlockHitResult> hitResultEither, int ticksFiringBeam){
+        if(ticksFiringBeam % 10 == 0){
+            hitResultEither.ifLeft(entityHitResult -> {
+                Entity entity = entityHitResult.getEntity();
+                entity.setTicksFrozen(600); // 15 seconds * 2 since it decays at 2 tps
+            });
+        }
+    }
+
+    public static void tickTelekinesis(Entity shooter, Either<EntityHitResult, BlockHitResult> ignoredHitResultEither, int ignoredTicksFiringBeam){
+        SuperpowerCapability.getOptional(shooter).ifPresent(cap -> {
+            cap.getTelekinesisTarget(shooter.level).ifPresent(target -> onTelekinesisTick(shooter, target));
+        });
+    }
+
+    public static void onTelekinesisTick(Entity shooter, Entity target) {
+        HitResult hitResult = getHitResult(shooter);
+        Vec3 position = hitResult.getLocation();
+        double xDist = position.x - target.getX();
+        double yDist = position.y - target.getY();
+        double zDist = position.z - target.getZ();
+        double dist = Math.sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
+        if (dist != 0.0D) {
+            double xPower = xDist / dist * 0.1D;
+            double yPower = yDist / dist * 0.1D;
+            double zPower = zDist / dist * 0.1D;
+            target.push(xPower, yPower, zPower);
         }
     }
 }
