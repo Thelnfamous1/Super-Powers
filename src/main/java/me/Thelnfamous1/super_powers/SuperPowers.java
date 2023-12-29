@@ -7,10 +7,16 @@ import me.Thelnfamous1.super_powers.common.SPCommands;
 import me.Thelnfamous1.super_powers.common.Superpower;
 import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapability;
 import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapabilityAttacher;
+import me.Thelnfamous1.super_powers.common.effect.ElectricShockEffect;
 import me.Thelnfamous1.super_powers.common.entity.EnergyBeam;
+import me.Thelnfamous1.super_powers.common.entity.TelekinesisBlockEntity;
 import me.Thelnfamous1.super_powers.common.network.SPNetwork;
 import me.Thelnfamous1.super_powers.common.util.SuperpowerHelper;
+import net.minecraft.core.particles.ParticleType;
+import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -25,8 +31,6 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -49,10 +53,27 @@ public class SuperPowers {
                     .clientTrackingRange(6)
                     .updateInterval(2));
 
+    public static final RegistryObject<EntityType<TelekinesisBlockEntity>> TELEKINESIS_BLOCK = register("telekinesis_block",
+            EntityType.Builder.of(TelekinesisBlockEntity::new, MobCategory.MISC)
+            .sized(0.98F, 0.98F)
+            .clientTrackingRange(10)
+            .updateInterval(20));
+
 
     private static <T extends Entity> RegistryObject<EntityType<T>> register(String pKey, EntityType.Builder<T> pBuilder) {
         return ENTITY_TYPES.register(pKey, () -> pBuilder.build(MODID + ":" + pKey));
     }
+    private static final DeferredRegister<MobEffect> MOB_EFFECTS = DeferredRegister.create(ForgeRegistries.MOB_EFFECTS, MODID);
+
+    public static final RegistryObject<ElectricShockEffect> ELECTRIC_SHOCK_EFFECT = MOB_EFFECTS.register("electric_shock",
+            () -> new ElectricShockEffect(MobEffectCategory.HARMFUL, Superpower.LIGHTNING.getDyeColor().getTextColor()));
+
+
+    private static final DeferredRegister<ParticleType<?>> PARTICLE_TYPES = DeferredRegister.create(ForgeRegistries.PARTICLE_TYPES, MODID);
+
+    public static final RegistryObject<SimpleParticleType> ELECTRIC_SHOCK_PARTICLE = PARTICLE_TYPES.register("electric_shock",
+            () -> new SimpleParticleType(false));
+
 
     public SuperPowers() {
         MinecraftForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> SPCommands.register(event.getDispatcher()));
@@ -66,6 +87,8 @@ public class SuperPowers {
         });
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         ENTITY_TYPES.register(modEventBus);
+        MOB_EFFECTS.register(modEventBus);
+        PARTICLE_TYPES.register(modEventBus);
         modEventBus.addListener(SPNetwork::register);
         DistExecutor.safeRunWhenOn(Dist.CLIENT, () -> ClientHandler::registerEventHandlers);
     }
@@ -74,32 +97,24 @@ public class SuperPowers {
         return new ResourceLocation(MODID, path);
     }
 
-
-    @SubscribeEvent
-    public static void onCommonSetup(FMLCommonSetupEvent event) {
-        // Do something when the setup is run on both client and server
-        LOGGER.info("HELLO from common setup!");
-    }
-
-    @SubscribeEvent
-    public static void onClientSetup(FMLClientSetupEvent event) {
-        // Do something when the setup is run on only the client
-        LOGGER.info("HELLO from client setup!");
-    }
-
     @SubscribeEvent
     public static void onGatherData(GatherDataEvent event){
         LanguageProvider languageProvider = new LanguageProvider(event.getGenerator(), MODID, "en_us") {
             @Override
             protected void addTranslations() {
                 for(Superpower superpower : Superpower.values()){
+                    this.add(SPKeymapping.SUPERPOWERS_BY_KEY.inverse().get(superpower).getName(), "Use %s".formatted(StringUtils.capitalize(superpower.getSerializedName())));
                     this.add(superpower.getDisplayName().getString(), StringUtils.capitalize(superpower.getSerializedName()));
                 }
-                this.add(SPCommands.COMMANDS_SUPERPOWER_QUERY, "The current superpower for %s is %s");
-                this.add(SPCommands.COMMANDS_SUPERPOWER_FAILURE, "%s already has superpower %s");
-                this.add(SPCommands.COMMANDS_SUPERPOWER_SUCCESS, "The current superpower for %s has been set to %s");
-                this.add(SPKeymapping.USE_SUPERPOWER.getName(), "Use Superpower");
-                this.add(SPKeymapping.USE_SUPERPOWER.getCategory(), "Super Powers");
+                this.add(SPKeymapping.KEY_CATEGORY, "Super Powers");
+                this.add(SPCommands.COMMANDS_SUPERPOWER_QUERY, "%s has the following superpowers: ");
+                this.add(SPCommands.COMMANDS_SUPERPOWER_GIVE_FAILURE, "%s already has %s");
+                this.add(SPCommands.COMMANDS_SUPERPOWER_GIVE_SUCCESS, "%s now has %s");
+                this.add(SPCommands.COMMANDS_SUPERPOWER_REMOVE_FAILURE, "%s does not have %s");
+                this.add(SPCommands.COMMANDS_SUPERPOWER_REMOVE_SUCCESS, "%s no longer has %s");
+                this.add(ENERGY_BEAM.get(), "Energy Beam");
+                this.add(TELEKINESIS_BLOCK.get(), "Telekinesis Block");
+                this.add(ELECTRIC_SHOCK_EFFECT.get(), "Electric Shock");
             }
         };
         event.getGenerator().addProvider(event.includeClient(), languageProvider);

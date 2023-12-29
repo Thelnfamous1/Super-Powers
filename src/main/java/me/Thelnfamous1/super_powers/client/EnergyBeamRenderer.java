@@ -17,7 +17,7 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.phys.HitResult;
 
@@ -36,30 +36,35 @@ public class EnergyBeamRenderer<T extends EnergyBeam> extends EntityRenderer<T> 
 
     @Override
     public void render(T energyBeam, float pEntityYaw, float pPartialTicks, PoseStack pPoseStack, MultiBufferSource pBuffer, int pPackedLight) {
-        LivingEntity owner = energyBeam.getOwner();
+        Entity owner = energyBeam.getOwner();
+
         if(owner != null){
             SuperpowerCapability.getOptional(owner).ifPresent(cap -> {
-                HitResult hitResult = SuperpowerHelper.getHitResult(owner);
+                HitResult hitResult = SuperpowerHelper.getHitResult(owner, cap.getSuperpowerTarget(owner.level)
+                        .map(target -> (double)target.distanceTo(owner))
+                        .orElse(SuperpowerHelper.MAX_HIT_DISTANCE));
                 double distanceTo = hitResult.distanceTo(owner);
-                drawBeams(energyBeam, cap.getSuperpower(), pPoseStack, distanceTo, SPEED_MODIFIER, pPartialTicks);
+                float[] beamColor = cap.getActiveSuperpower()
+                        .map(Superpower::getDyeColor)
+                        .orElse(DyeColor.WHITE)
+                        .getTextureDiffuseColors();
+                drawBeams(energyBeam, beamColor, pPoseStack, distanceTo, SPEED_MODIFIER, pPartialTicks);
             });
         }
     }
 
-    private static void drawBeams(EnergyBeam energyBeam, Superpower superpower, PoseStack pPoseStack, double distance, float speedModifier, float partialTicks) {
+    private static void drawBeams(EnergyBeam energyBeam, float[] color, PoseStack pPoseStack, double distance, float speedModifier, float partialTicks) {
         VertexConsumer builder;
         long gameTime = energyBeam.level.getGameTime();
         double v = gameTime * speedModifier;
         float additiveThickness = (energyBeam.getBeamWidth() * 1.75F) * calculateLaserFlickerModifier(gameTime);
 
-        DyeColor dyeColor = superpower.getDyeColor();
-        float[] texDiffuseColors = dyeColor.getTextureDiffuseColors();
         float r = 1.0F; // already divided by 255
         float g = 1.0F; // already divided by 255
         float b = 1.0F; // already divided by 255
-        float innerR = texDiffuseColors[0]; // already divided by 255
-        float innerG = texDiffuseColors[1]; // already divided by 255
-        float innerB = texDiffuseColors[2]; // already divided by 255
+        float innerR = color[0]; // already divided by 255
+        float innerG = color[1]; // already divided by 255
+        float innerB = color[2]; // already divided by 255
         MultiBufferSource.BufferSource buffer = Minecraft.getInstance().renderBuffers().bufferSource();
 
         pPoseStack.pushPose();

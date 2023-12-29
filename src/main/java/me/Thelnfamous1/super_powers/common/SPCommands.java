@@ -8,20 +8,26 @@ import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import me.Thelnfamous1.super_powers.SuperPowers;
 import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapability;
 import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapabilityInterface;
-import me.Thelnfamous1.super_powers.common.network.S2CSetSuperpowerPacket;
+import me.Thelnfamous1.super_powers.common.network.S2CUpdateSuperpowerPacket;
 import me.Thelnfamous1.super_powers.common.network.SPNetwork;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;
+
+import java.util.Collection;
+import java.util.List;
 
 public class SPCommands {
 
     public static final String COMMANDS_SUPERPOWER_QUERY = "commands.%s.superpower.query".formatted(SuperPowers.MODID);
-    public static final String COMMANDS_SUPERPOWER_FAILURE = "commands.%s.superpower.failure".formatted(SuperPowers.MODID);
-    public static final String COMMANDS_SUPERPOWER_SUCCESS = "commands.%s.superpower.success".formatted(SuperPowers.MODID);
+    public static final String COMMANDS_SUPERPOWER_GIVE_FAILURE = "commands.%s.superpower.give.failure".formatted(SuperPowers.MODID);
+    public static final String COMMANDS_SUPERPOWER_GIVE_SUCCESS = "commands.%s.superpower.give.success".formatted(SuperPowers.MODID);
+    public static final String COMMANDS_SUPERPOWER_REMOVE_FAILURE = "commands.%s.superpower.remove.failure".formatted(SuperPowers.MODID);
+    public static final String COMMANDS_SUPERPOWER_REMOVE_SUCCESS = "commands.%s.superpower.remove.success".formatted(SuperPowers.MODID);
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher){
         LiteralArgumentBuilder<CommandSourceStack> baseCommand = Commands.literal("superpower");
@@ -29,7 +35,13 @@ public class SPCommands {
             baseCommand.then(Commands.literal("give")
                     .then(Commands.literal(superpower.getSerializedName())
                             .then(Commands.argument("player", EntityArgument.player())
-                                    .executes((context) -> setSuperpower(context.getSource(), superpower, EntityArgument.getPlayer(context, "player")))
+                                    .executes((context) -> giveSuperpower(context.getSource(), superpower, EntityArgument.getPlayer(context, "player")))
+                            )
+                    )
+            ).then(Commands.literal("remove")
+                    .then(Commands.literal(superpower.getSerializedName())
+                            .then(Commands.argument("player", EntityArgument.player())
+                                    .executes((context) -> removeSuperpower(context.getSource(), superpower, EntityArgument.getPlayer(context, "player")))
                             )
                     )
             );
@@ -38,23 +50,43 @@ public class SPCommands {
         dispatcher.register(baseCommand.requires((stack) -> stack.hasPermission(2))
                 .then(Commands.literal("get")
                         .then(Commands.argument("player", EntityArgument.player())
-                                .executes((context) -> getSuperpower(context, EntityArgument.getPlayer(context, "player"))))));
+                                .executes((context) -> getSuperpowers(context, EntityArgument.getPlayer(context, "player"))))));
     }
 
-    private static int getSuperpower(CommandContext<CommandSourceStack> context, ServerPlayer player) {
-        Superpower superpower = SuperpowerCapability.getCapability(player).getSuperpower();
-        context.getSource().sendSuccess(Component.translatable(COMMANDS_SUPERPOWER_QUERY, player.getDisplayName(), superpower.getColoredDisplayName()), false);
-        return superpower.getId();
+    private static int getSuperpowers(CommandContext<CommandSourceStack> context, ServerPlayer player) {
+        Collection<Superpower> superpowers = SuperpowerCapability.getCapability(player).getSuperpowers();
+        List<MutableComponent> superpowerComponents = superpowers.stream().map(Superpower::getColoredDisplayName).toList();
+        MutableComponent queryComponent = Component.translatable(COMMANDS_SUPERPOWER_QUERY, player.getDisplayName());
+        queryComponent.append("[");
+        for(int i = 0; i < superpowerComponents.size(); i++){
+            queryComponent.append(superpowerComponents.get(i));
+            if(i < superpowerComponents.size() - 1){
+                queryComponent.append(", ");
+            }
+        }
+        queryComponent.append("]");
+        context.getSource().sendSuccess(queryComponent, false);
+        return 0;
     }
 
-    public static int setSuperpower(CommandSourceStack pSource, Superpower superpower, ServerPlayer player) throws CommandSyntaxException {
+    public static int giveSuperpower(CommandSourceStack pSource, Superpower superpower, ServerPlayer player) throws CommandSyntaxException {
         SuperpowerCapabilityInterface capability = SuperpowerCapability.getCapability(player);
-        if (capability.getSuperpower() == superpower) {
-            throw new DynamicCommandExceptionType((key) -> Component.translatable(COMMANDS_SUPERPOWER_FAILURE, player.getDisplayName(), key)).create(superpower.getSerializedName());
+        if (!capability.addSuperpower(superpower)) {
+            throw new DynamicCommandExceptionType((key) -> Component.translatable(COMMANDS_SUPERPOWER_GIVE_FAILURE, player.getDisplayName(), key)).create(superpower.getSerializedName());
         } else {
-            capability.setSuperpower(superpower);
-            SPNetwork.SYNC_CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), new S2CSetSuperpowerPacket(player, capability));
-            pSource.sendSuccess(Component.translatable(COMMANDS_SUPERPOWER_SUCCESS, player.getDisplayName(), superpower.getColoredDisplayName()), true);
+            SPNetwork.SYNC_CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), new S2CUpdateSuperpowerPacket(player, capability));
+            pSource.sendSuccess(Component.translatable(COMMANDS_SUPERPOWER_GIVE_SUCCESS, player.getDisplayName(), superpower.getColoredDisplayName()), true);
+            return 0;
+        }
+    }
+
+    public static int removeSuperpower(CommandSourceStack pSource, Superpower superpower, ServerPlayer player) throws CommandSyntaxException {
+        SuperpowerCapabilityInterface capability = SuperpowerCapability.getCapability(player);
+        if (!capability.removeSuperpower(superpower)) {
+            throw new DynamicCommandExceptionType((key) -> Component.translatable(COMMANDS_SUPERPOWER_REMOVE_FAILURE, player.getDisplayName(), key)).create(superpower.getSerializedName());
+        } else {
+            SPNetwork.SYNC_CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), new S2CUpdateSuperpowerPacket(player, capability));
+            pSource.sendSuccess(Component.translatable(COMMANDS_SUPERPOWER_REMOVE_SUCCESS, player.getDisplayName(), superpower.getColoredDisplayName()), true);
             return 0;
         }
     }

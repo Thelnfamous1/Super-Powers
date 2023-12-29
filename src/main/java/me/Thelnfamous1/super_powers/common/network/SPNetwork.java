@@ -22,8 +22,8 @@ public class SPNetwork {
     }
 
     private static void init(){
-        SYNC_CHANNEL.registerMessage(INDEX++, C2SUseSuperpowerPacket.class, C2SUseSuperpowerPacket::write, C2SUseSuperpowerPacket::new, C2SUseSuperpowerPacket::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        SYNC_CHANNEL.registerMessage(INDEX++, S2CSetSuperpowerPacket.class, S2CSetSuperpowerPacket::write, S2CSetSuperpowerPacket::new, S2CSetSuperpowerPacket::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        SYNC_CHANNEL.registerMessage(INDEX++, C2SUpdateSuperpowerPacket.class, C2SUpdateSuperpowerPacket::write, C2SUpdateSuperpowerPacket::new, C2SUpdateSuperpowerPacket::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        SYNC_CHANNEL.registerMessage(INDEX++, S2CUpdateSuperpowerPacket.class, S2CUpdateSuperpowerPacket::write, S2CUpdateSuperpowerPacket::new, S2CUpdateSuperpowerPacket::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         SYNC_CHANNEL.registerMessage(INDEX++, C2SEnergyBeamPacket.class, C2SEnergyBeamPacket::write, C2SEnergyBeamPacket::new, C2SEnergyBeamPacket::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
     }
 }

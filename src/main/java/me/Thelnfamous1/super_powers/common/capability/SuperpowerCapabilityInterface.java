@@ -7,23 +7,38 @@ import net.minecraft.world.level.Level;
 import net.minecraftforge.common.util.INBTSerializable;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.Optional;
 
 public interface SuperpowerCapabilityInterface extends INBTSerializable<CompoundTag> {
 
-    Superpower getSuperpower();
+    Collection<Superpower> getSuperpowers();
 
-    void setSuperpower(Superpower superpower);
+    default boolean hasSuperpower(Superpower superpower){
+        return this.getSuperpowers().contains(superpower);
+    }
 
-    boolean isFiringBeam();
+    boolean addSuperpower(Superpower superpower);
 
-    void setFiringBeam(boolean firingBeam);
+    boolean removeSuperpower(Superpower superpower);
 
-    int getTicksFiringBeam();
+    default boolean isSuperpowerActive(){
+        return this.getActiveSuperpower().isPresent();
+    }
 
-    void setTicksFiringBeam(int ticksFiringBeam);
+    default boolean isActiveSuperpower(Superpower superpower){
+        return this.getActiveSuperpower().map(active -> active.equals(superpower)).orElse(false);
+    }
 
-    Optional<Entity> getTelekinesisTarget(Level level);
+    int getActiveSuperpowerTicks();
 
-    void setTelekinesisTarget(@Nullable Entity telekinesisTarget);
+    void setActiveSuperpowerTicks(int activeSuperpowerTicks);
+
+    Optional<Entity> getSuperpowerTarget(Level level);
+
+    void setSuperpowerTarget(@Nullable Entity superpowerTarget);
+
+    Optional<Superpower> getActiveSuperpower();
+
+    void setActiveSuperpower(@Nullable Superpower activeSuperpower);
 }

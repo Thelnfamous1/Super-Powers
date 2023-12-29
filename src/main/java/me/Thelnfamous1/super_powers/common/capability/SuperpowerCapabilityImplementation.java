@@ -7,79 +7,90 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class SuperpowerCapabilityImplementation implements SuperpowerCapabilityInterface {
-    public static final String TAG_KEY = "Superpower";
-    private Superpower superpower = Superpower.NONE;
+    public static final String TAG_KEY = "Superpowers";
+    private Set<Superpower> superpowers = new HashSet<>();
     private boolean firingBeam;
-    private int ticksFiringBeam;
+    private int activeSuperpowerTicks;
     @Nullable
-    private Entity telekinesisTarget;
+    private Entity superpowerTarget;
     @Nullable
-    private UUID telekinesisTargetUUID;
-    private int telekinesisTargetId;
+    private UUID superpowerTargetUUID;
+    private int superpowerTargetId;
+    @Nullable
+    private Superpower activeSuperpower;
 
     @Override
-    public Superpower getSuperpower() {
-        return this.superpower;
+    public Collection<Superpower> getSuperpowers() {
+        return this.superpowers;
     }
 
     @Override
-    public void setSuperpower(Superpower superpower) {
-        this.superpower = superpower;
+    public boolean addSuperpower(Superpower superpower) {
+        return this.superpowers.add(superpower);
     }
 
     @Override
-    public boolean isFiringBeam() {
-        return this.firingBeam;
+    public boolean removeSuperpower(Superpower superpower) {
+        return this.superpowers.remove(superpower);
     }
 
     @Override
-    public void setFiringBeam(boolean firingBeam) {
-        this.firingBeam = firingBeam;
-        this.setTicksFiringBeam(0);
+    public int getActiveSuperpowerTicks() {
+        return this.activeSuperpowerTicks;
     }
 
     @Override
-    public int getTicksFiringBeam() {
-        return this.ticksFiringBeam;
+    public void setActiveSuperpowerTicks(int activeSuperpowerTicks) {
+        this.activeSuperpowerTicks = activeSuperpowerTicks;
     }
 
     @Override
-    public void setTicksFiringBeam(int ticksFiringBeam) {
-        this.ticksFiringBeam = ticksFiringBeam;
-    }
-
-    @Override
-    public Optional<Entity> getTelekinesisTarget(Level level) {
-        if(this.telekinesisTarget == null){
-            if(this.telekinesisTargetUUID != null && level instanceof ServerLevel serverLevel){
-                this.telekinesisTarget = serverLevel.getEntity(this.telekinesisTargetUUID);
-            } else if(this.telekinesisTargetId > 0){
-                this.telekinesisTarget = level.getEntity(this.telekinesisTargetId);
+    public Optional<Entity> getSuperpowerTarget(Level level) {
+        if(this.superpowerTarget != null && this.superpowerTarget.isRemoved()){
+            this.superpowerTarget = null;
+        }
+        if(this.superpowerTarget == null){
+            if(this.superpowerTargetUUID != null && level instanceof ServerLevel serverLevel){
+                this.superpowerTarget = serverLevel.getEntity(this.superpowerTargetUUID);
+            } else if(this.superpowerTargetId > 0){
+                this.superpowerTarget = level.getEntity(this.superpowerTargetId);
             }
         }
-        return Optional.ofNullable(this.telekinesisTarget);
+        return Optional.ofNullable(this.superpowerTarget);
     }
 
     @Override
-    public void setTelekinesisTarget(@Nullable Entity telekinesisTarget) {
-        this.telekinesisTarget = telekinesisTarget;
-        this.telekinesisTargetUUID = telekinesisTarget != null ? telekinesisTarget.getUUID() : null;
-        this.telekinesisTargetId = telekinesisTarget != null ? telekinesisTarget.getId() : 0;
+    public void setSuperpowerTarget(@Nullable Entity superpowerTarget) {
+        this.superpowerTarget = superpowerTarget;
+        this.superpowerTargetUUID = superpowerTarget != null ? superpowerTarget.getUUID() : null;
+        this.superpowerTargetId = superpowerTarget != null ? superpowerTarget.getId() : 0;
+    }
+
+    @Override
+    public Optional<Superpower> getActiveSuperpower() {
+        return Optional.ofNullable(this.activeSuperpower);
+    }
+
+    @Override
+    public void setActiveSuperpower(@Nullable Superpower activeSuperpower) {
+        this.activeSuperpower = activeSuperpower;
+        this.setActiveSuperpowerTicks(0);
     }
 
     @Override
     public CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
-        tag.putByte(TAG_KEY, (byte) this.superpower.getId());
+        List<Integer> superpowerIds = this.superpowers.stream().map(Superpower::getId).toList();
+        tag.putIntArray(TAG_KEY, superpowerIds);
         return tag;
     }
 
     @Override
     public void deserializeNBT(CompoundTag nbt) {
-        this.superpower = Superpower.byId(nbt.getByte(TAG_KEY));
+        this.superpowers = Arrays.stream(nbt.getIntArray(TAG_KEY)).mapToObj(Superpower::byId).collect(Collectors.toSet());
     }
 }
