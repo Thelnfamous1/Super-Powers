@@ -7,6 +7,7 @@ import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapability;
 import me.Thelnfamous1.super_powers.common.entity.EnergyBeam;
 import me.Thelnfamous1.super_powers.common.entity.TelekinesisBlockEntity;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -15,6 +16,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.*;
+import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.entity.projectile.SmallFireball;
@@ -331,5 +333,15 @@ public class SuperpowerHelper {
         projectile.setXRot((float)(Mth.atan2(deltaMove.y, horizontalDistance) * (double)Mth.RAD_TO_DEG));
         projectile.yRotO = projectile.getYRot();
         projectile.xRotO = projectile.getXRot();
+    }
+
+    public static Abilities copyAbilities(Player player, boolean mayFly){
+        Abilities abilities = player.getAbilities();
+        CompoundTag saveAbilities = new CompoundTag();
+        abilities.addSaveData(saveAbilities);
+        Abilities copy = new Abilities();
+        copy.loadSaveData(saveAbilities);
+        copy.mayfly = mayFly;
+        return copy;
     }
 }

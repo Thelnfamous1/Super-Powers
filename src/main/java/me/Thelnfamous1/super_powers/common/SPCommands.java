@@ -26,11 +26,30 @@ public class SPCommands {
     public static final String COMMANDS_SUPERPOWER_QUERY = "commands.%s.superpower.query".formatted(SuperPowers.MODID);
     public static final String COMMANDS_SUPERPOWER_GIVE_FAILURE = "commands.%s.superpower.give.failure".formatted(SuperPowers.MODID);
     public static final String COMMANDS_SUPERPOWER_GIVE_SUCCESS = "commands.%s.superpower.give.success".formatted(SuperPowers.MODID);
+    public static final String COMMANDS_SUPERPOWER_GIVE_ALL = "commands.%s.superpower.give.all".formatted(SuperPowers.MODID);
     public static final String COMMANDS_SUPERPOWER_REMOVE_FAILURE = "commands.%s.superpower.remove.failure".formatted(SuperPowers.MODID);
     public static final String COMMANDS_SUPERPOWER_REMOVE_SUCCESS = "commands.%s.superpower.remove.success".formatted(SuperPowers.MODID);
+    public static final String COMMANDS_SUPERPOWER_REMOVE_ALL = "commands.%s.superpower.remove.all".formatted(SuperPowers.MODID);
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher){
         LiteralArgumentBuilder<CommandSourceStack> baseCommand = Commands.literal("superpower");
+
+        baseCommand.then(Commands.literal("get")
+                .then(Commands.argument("player", EntityArgument.player())
+                        .executes((context) -> getSuperpowers(context, EntityArgument.getPlayer(context, "player")))));
+
+
+        baseCommand.then(Commands.literal("give")
+                .then(Commands.literal("all")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes((context) -> giveAllSuperpowers(context.getSource(), EntityArgument.getPlayer(context, "player"))))));
+
+
+        baseCommand.then(Commands.literal("remove")
+                .then(Commands.literal("all")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes((context) -> removeAllSuperpowers(context.getSource(), EntityArgument.getPlayer(context, "player"))))));
+
         for(Superpower superpower : Superpower.values()) {
             baseCommand.then(Commands.literal("give")
                     .then(Commands.literal(superpower.getSerializedName())
@@ -47,10 +66,7 @@ public class SPCommands {
             );
         }
 
-        dispatcher.register(baseCommand.requires((stack) -> stack.hasPermission(2))
-                .then(Commands.literal("get")
-                        .then(Commands.argument("player", EntityArgument.player())
-                                .executes((context) -> getSuperpowers(context, EntityArgument.getPlayer(context, "player"))))));
+        dispatcher.register(baseCommand.requires((stack) -> stack.hasPermission(2)));
     }
 
     private static int getSuperpowers(CommandContext<CommandSourceStack> context, ServerPlayer player) {
@@ -66,6 +82,28 @@ public class SPCommands {
         }
         queryComponent.append("]");
         context.getSource().sendSuccess(queryComponent, false);
+        return 0;
+    }
+
+    public static int giveAllSuperpowers(CommandSourceStack pSource, ServerPlayer player) {
+        SuperpowerCapabilityInterface capability = SuperpowerCapability.getCapability(player);
+        for(Superpower superpower : Superpower.values()){
+            capability.addSuperpower(superpower);
+        }
+
+        SPNetwork.SYNC_CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), new S2CUpdateSuperpowerPacket(player, capability));
+        pSource.sendSuccess(Component.translatable(COMMANDS_SUPERPOWER_GIVE_ALL, player.getDisplayName()), true);
+        return 0;
+    }
+
+    public static int removeAllSuperpowers(CommandSourceStack pSource, ServerPlayer player) {
+        SuperpowerCapabilityInterface capability = SuperpowerCapability.getCapability(player);
+        for(Superpower superpower : Superpower.values()){
+            capability.removeSuperpower(superpower);
+        }
+
+        SPNetwork.SYNC_CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), new S2CUpdateSuperpowerPacket(player, capability));
+        pSource.sendSuccess(Component.translatable(COMMANDS_SUPERPOWER_REMOVE_ALL, player.getDisplayName()), true);
         return 0;
     }
 

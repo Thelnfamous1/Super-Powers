@@ -1,7 +1,9 @@
 {
+  "commands.super_powers.superpower.give.all": "%s now has all superpowers",
   "commands.super_powers.superpower.give.failure": "%s already has %s",
   "commands.super_powers.superpower.give.success": "%s now has %s",
   "commands.super_powers.superpower.query": "%s has the following superpowers: ",
+  "commands.super_powers.superpower.remove.all": "%s now has no superpowers",
   "commands.super_powers.superpower.remove.failure": "%s does not have %s",
   "commands.super_powers.superpower.remove.success": "%s no longer has %s",
   "effect.super_powers.electric_shock": "Electric Shock",

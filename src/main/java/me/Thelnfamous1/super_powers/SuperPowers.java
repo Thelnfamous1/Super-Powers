@@ -14,7 +14,9 @@ import me.Thelnfamous1.super_powers.common.network.SPNetwork;
 import me.Thelnfamous1.super_powers.common.util.SuperpowerHelper;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.particles.SimpleParticleType;
+import net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.Entity;
@@ -83,6 +85,19 @@ public class SuperPowers {
         MinecraftForge.EVENT_BUS.addListener((TickEvent.PlayerTickEvent event) -> {
             if(event.phase == TickEvent.Phase.END){
                 SuperpowerHelper.tickActivePowers(event.player);
+                if(!event.player.level.isClientSide){
+                    SuperpowerCapability.getOptional(event.player).ifPresent(cap -> {
+                        ServerPlayer serverPlayer = (ServerPlayer) event.player;
+                        // give flight to superpowered players, or remove it for non-superpowered players
+                        if(cap.getSuperpowers().isEmpty()){
+                            if(serverPlayer.gameMode.isSurvival()) serverPlayer.getAbilities().mayfly = false;
+                            serverPlayer.connection.send(new ClientboundPlayerAbilitiesPacket(SuperpowerHelper.copyAbilities(serverPlayer, false)));
+                        } else if(!serverPlayer.getAbilities().mayfly){
+                            serverPlayer.getAbilities().mayfly = true;
+                            serverPlayer.connection.send(new ClientboundPlayerAbilitiesPacket(SuperpowerHelper.copyAbilities(serverPlayer, true)));
+                        }
+                    });
+                }
             }
         });
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
@@ -110,8 +125,10 @@ public class SuperPowers {
                 this.add(SPCommands.COMMANDS_SUPERPOWER_QUERY, "%s has the following superpowers: ");
                 this.add(SPCommands.COMMANDS_SUPERPOWER_GIVE_FAILURE, "%s already has %s");
                 this.add(SPCommands.COMMANDS_SUPERPOWER_GIVE_SUCCESS, "%s now has %s");
+                this.add(SPCommands.COMMANDS_SUPERPOWER_GIVE_ALL, "%s now has all superpowers");
                 this.add(SPCommands.COMMANDS_SUPERPOWER_REMOVE_FAILURE, "%s does not have %s");
                 this.add(SPCommands.COMMANDS_SUPERPOWER_REMOVE_SUCCESS, "%s no longer has %s");
+                this.add(SPCommands.COMMANDS_SUPERPOWER_REMOVE_ALL, "%s now has no superpowers");
                 this.add(ENERGY_BEAM.get(), "Energy Beam");
                 this.add(TELEKINESIS_BLOCK.get(), "Telekinesis Block");
                 this.add(ELECTRIC_SHOCK_EFFECT.get(), "Electric Shock");
