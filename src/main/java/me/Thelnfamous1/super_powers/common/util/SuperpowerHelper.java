@@ -160,9 +160,12 @@ public class SuperpowerHelper {
         return SuperpowerCapability.getOptional(shooter).map(cap -> {
             HitResult hitResult = getHitResult(shooter);
             if(hitResult.getType() != HitResult.Type.MISS && hitResult instanceof BlockHitResult blockHitResult){
-                fireBeamRaw(shooter);
                 BlockPos blockPos = blockHitResult.getBlockPos();
                 BlockState blockState = shooter.level.getBlockState(blockPos);
+                if(blockState.is(SuperPowers.TELEKINESIS_IMMUNE)){
+                    return false;
+                }
+                fireBeamRaw(shooter);
                 TelekinesisBlockEntity telekinesisBlockEntity = TelekinesisBlockEntity.telekinesis(shooter.level, blockPos, blockState, shooter);
                 cap.setSuperpowerTarget(telekinesisBlockEntity);
                 return true;

@@ -12,16 +12,21 @@ import me.Thelnfamous1.super_powers.common.entity.EnergyBeam;
 import me.Thelnfamous1.super_powers.common.entity.TelekinesisBlockEntity;
 import me.Thelnfamous1.super_powers.common.network.SPNetwork;
 import me.Thelnfamous1.super_powers.common.util.SuperpowerHelper;
+import net.minecraft.core.Registry;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.particles.SimpleParticleType;
+import net.minecraft.data.tags.BlockTagsProvider;
 import net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.level.block.Block;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.data.LanguageProvider;
@@ -76,6 +81,7 @@ public class SuperPowers {
     public static final RegistryObject<SimpleParticleType> ELECTRIC_SHOCK_PARTICLE = PARTICLE_TYPES.register("electric_shock",
             () -> new SimpleParticleType(false));
 
+    public static final TagKey<Block> TELEKINESIS_IMMUNE = TagKey.create(Registry.BLOCK_REGISTRY, new ResourceLocation(MODID, "telekinesis_immune"));
 
     public SuperPowers() {
         MinecraftForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> SPCommands.register(event.getDispatcher()));
@@ -135,5 +141,13 @@ public class SuperPowers {
             }
         };
         event.getGenerator().addProvider(event.includeClient(), languageProvider);
+
+        BlockTagsProvider blockTagsProvider = new BlockTagsProvider(event.getGenerator(), MODID, event.getExistingFileHelper()){
+            @Override
+            protected void addTags() {
+                this.tag(TELEKINESIS_IMMUNE).addTag(BlockTags.WITHER_IMMUNE);
+            }
+        };
+        event.getGenerator().addProvider(event.includeServer(), blockTagsProvider);
     }
 }
