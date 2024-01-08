@@ -24,7 +24,7 @@ public abstract class SnowballMixin extends ThrowableItemProjectile {
         if(this.getTags().contains(SuperpowerHelper.ICE_SUPERPOWER_TAG)){
             ci.cancel();
             Entity entity = pResult.getEntity();
-            SuperpowerHelper.applyFreezeDamage(entity, 1);
+            SuperpowerHelper.applyIceballDamage(entity, this, this.getOwner(), 1);
         }
     }
 

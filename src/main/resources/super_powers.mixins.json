@@ -4,8 +4,9 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "super_powers.refmap.json",
   "mixins": [
-    "SnowballMixin",
-    "FallingBlockEntityAccess"
+    "FallingBlockEntityAccess",
+    "MobEffectInstanceMixin",
+    "SnowballMixin"
   ],
   "client": [
     "LocalPlayerMixin"

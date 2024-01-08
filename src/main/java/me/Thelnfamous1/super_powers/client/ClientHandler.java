@@ -7,6 +7,7 @@ import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapability;
 import me.Thelnfamous1.super_powers.common.network.C2SUpdateSuperpowerPacket;
 import me.Thelnfamous1.super_powers.common.network.SPNetwork;
 import me.Thelnfamous1.super_powers.common.particle.ElectricShockParticle;
+import me.Thelnfamous1.super_powers.common.particle.SnowflakeParticle;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.FallingBlockRenderer;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
@@ -33,6 +34,7 @@ public class ClientHandler {
         });
         modEventBus.addListener((RegisterParticleProvidersEvent event) -> {
             event.register(SuperPowers.ELECTRIC_SHOCK_PARTICLE.get(), ElectricShockParticle.Factory::new);
+            event.register(SuperPowers.SNOWFLAKE.get(), SnowflakeParticle.Factory::new);
         });
         MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingIn event) -> {
             SPNetwork.SYNC_CHANNEL.sendToServer(new C2SUpdateSuperpowerPacket(C2SUpdateSuperpowerPacket.Action.SYNC));

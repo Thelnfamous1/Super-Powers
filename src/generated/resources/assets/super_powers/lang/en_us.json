@@ -7,6 +7,7 @@
   "commands.super_powers.superpower.remove.failure": "%s does not have %s",
   "commands.super_powers.superpower.remove.success": "%s no longer has %s",
   "effect.super_powers.electric_shock": "Electric Shock",
+  "effect.super_powers.frozen": "Frozen",
   "entity.super_powers.energy_beam": "Energy Beam",
   "entity.super_powers.telekinesis_block": "Telekinesis Block",
   "key.category.super_powers": "Super Powers",

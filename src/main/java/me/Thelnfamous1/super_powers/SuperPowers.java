@@ -8,6 +8,7 @@ import me.Thelnfamous1.super_powers.common.Superpower;
 import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapability;
 import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapabilityAttacher;
 import me.Thelnfamous1.super_powers.common.effect.ElectricShockEffect;
+import me.Thelnfamous1.super_powers.common.effect.FrozenEffect;
 import me.Thelnfamous1.super_powers.common.entity.EnergyBeam;
 import me.Thelnfamous1.super_powers.common.entity.TelekinesisBlockEntity;
 import me.Thelnfamous1.super_powers.common.network.SPNetwork;
@@ -75,13 +76,20 @@ public class SuperPowers {
     public static final RegistryObject<ElectricShockEffect> ELECTRIC_SHOCK_EFFECT = MOB_EFFECTS.register("electric_shock",
             () -> new ElectricShockEffect(MobEffectCategory.HARMFUL, Superpower.LIGHTNING.getDyeColor().getTextColor()));
 
+    public static final RegistryObject<FrozenEffect> FROZEN = MOB_EFFECTS.register("frozen",
+            () -> new FrozenEffect(MobEffectCategory.HARMFUL, Superpower.ICE.getDyeColor().getTextColor()));
 
     private static final DeferredRegister<ParticleType<?>> PARTICLE_TYPES = DeferredRegister.create(ForgeRegistries.PARTICLE_TYPES, MODID);
 
     public static final RegistryObject<SimpleParticleType> ELECTRIC_SHOCK_PARTICLE = PARTICLE_TYPES.register("electric_shock",
             () -> new SimpleParticleType(false));
 
+    public static final RegistryObject<SimpleParticleType> SNOWFLAKE = PARTICLE_TYPES.register("snowflake",
+            () -> new SimpleParticleType(false));
+
     public static final TagKey<Block> TELEKINESIS_IMMUNE = TagKey.create(Registry.BLOCK_REGISTRY, new ResourceLocation(MODID, "telekinesis_immune"));
+
+    public static final TagKey<Block> FIRE_IMMUNE = TagKey.create(Registry.BLOCK_REGISTRY, new ResourceLocation(MODID, "fire_immune"));
 
     public SuperPowers() {
         MinecraftForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> SPCommands.register(event.getDispatcher()));
@@ -138,6 +146,7 @@ public class SuperPowers {
                 this.add(ENERGY_BEAM.get(), "Energy Beam");
                 this.add(TELEKINESIS_BLOCK.get(), "Telekinesis Block");
                 this.add(ELECTRIC_SHOCK_EFFECT.get(), "Electric Shock");
+                this.add(FROZEN.get(), "Frozen");
             }
         };
         event.getGenerator().addProvider(event.includeClient(), languageProvider);
@@ -146,6 +155,7 @@ public class SuperPowers {
             @Override
             protected void addTags() {
                 this.tag(TELEKINESIS_IMMUNE).addTag(BlockTags.WITHER_IMMUNE);
+                this.tag(FIRE_IMMUNE).addTag(BlockTags.WITHER_IMMUNE);
             }
         };
         event.getGenerator().addProvider(event.includeServer(), blockTagsProvider);

@@ -7,7 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.StringRepresentable;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
@@ -30,16 +30,16 @@ public enum Superpower implements StringRepresentable {
 
     private final String key;
     private final DyeColor dyeColor;
-    private final Function<Player, Boolean> activatePrimary;
-    private final Consumer<Player> deactivate;
+    private final Function<LivingEntity, Boolean> activate;
+    private final Consumer<LivingEntity> deactivate;
     private final TickConsumer tickUse;
     private final int id;
 
-    Superpower(int id, String key, DyeColor dyeColor, Function<Player, Boolean> activatePrimary, TickConsumer tickUse, Consumer<Player> deactivate){
+    Superpower(int id, String key, DyeColor dyeColor, Function<LivingEntity, Boolean> activate, TickConsumer tickUse, Consumer<LivingEntity> deactivate){
         this.id = id;
         this.key = key;
         this.dyeColor = dyeColor;
-        this.activatePrimary = activatePrimary;
+        this.activate = activate;
         this.deactivate = deactivate;
         this.tickUse = tickUse;
     }
@@ -53,15 +53,15 @@ public enum Superpower implements StringRepresentable {
         return CODEC.byName(name);
     }
 
-    public boolean activate(Player player){
-        return this.activatePrimary.apply(player);
+    public boolean activate(LivingEntity player){
+        return this.activate.apply(player);
     }
 
-    public void deactivate(Player player){
+    public void deactivate(LivingEntity player){
         this.deactivate.accept(player);
     }
 
-    public void tickUse(Player shooter, Either<EntityHitResult, BlockHitResult> hitResultEither, int ticksFiringBeam){
+    public void tickUse(LivingEntity shooter, Either<EntityHitResult, BlockHitResult> hitResultEither, int ticksFiringBeam){
         this.tickUse.apply(shooter, hitResultEither, ticksFiringBeam);
     }
 
@@ -92,7 +92,7 @@ public enum Superpower implements StringRepresentable {
 
     @FunctionalInterface
     public interface TickConsumer{
-        void apply(Player shooter, Either<EntityHitResult, BlockHitResult> hitResult, int ticksFiringBeam);
+        void apply(LivingEntity shooter, Either<EntityHitResult, BlockHitResult> hitResult, int ticksFiringBeam);
     }
 
 

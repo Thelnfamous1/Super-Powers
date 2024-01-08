@@ -1,19 +1,25 @@
 package me.Thelnfamous1.super_powers.common.util;
 
 import com.mojang.datafixers.util.Either;
+import com.mojang.math.Vector3f;
 import me.Thelnfamous1.super_powers.SuperPowers;
 import me.Thelnfamous1.super_powers.common.Superpower;
 import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapability;
 import me.Thelnfamous1.super_powers.common.entity.EnergyBeam;
 import me.Thelnfamous1.super_powers.common.entity.TelekinesisBlockEntity;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.EntityTypeTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.IndirectEntityDamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.player.Abilities;
@@ -29,6 +35,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.*;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Predicate;
 
@@ -40,17 +47,17 @@ public class SuperpowerHelper {
     public static final double MAX_HIT_DISTANCE = 1024D;
     public static final int TELEKINETIC_HOLD_DISTANCE = 3;
 
-    public static boolean activateLightning(Player player) {
-        if(player.isSecondaryUseActive()){
-            return fireBeam(player);
+    public static boolean activateLightning(LivingEntity shooter) {
+        if(isSecondaryUseActive(shooter)){
+            return fireBeam(shooter);
         }
-        HitResult hitResult = getHitResult(player);
-        LightningBolt lightningBolt = EntityType.LIGHTNING_BOLT.create(player.level);
+        HitResult hitResult = getHitResult(shooter);
+        LightningBolt lightningBolt = EntityType.LIGHTNING_BOLT.create(shooter.level);
         if(lightningBolt != null){
             Vec3 target = hitResult.getLocation();
-            lightningBolt.moveTo(target.x, target.y, target.z, player.getYRot(), lightningBolt.getXRot()); // bolts can only be vertical, so use its default x rot
-            if(player instanceof ServerPlayer player1) lightningBolt.setCause(player1);
-            player.level.addFreshEntity(lightningBolt);
+            lightningBolt.moveTo(target.x, target.y, target.z, shooter.getYRot(), lightningBolt.getXRot()); // bolts can only be vertical, so use its default x rot
+            if(shooter instanceof ServerPlayer serverPlayer) lightningBolt.setCause(serverPlayer);
+            shooter.level.addFreshEntity(lightningBolt);
         }
         return false;
     }
@@ -98,38 +105,44 @@ public class SuperpowerHelper {
         return pick;
     }
 
-    public static boolean activateFire(Player player) {
-        if(player.isSecondaryUseActive()){
-            return fireBeam(player);
+    public static boolean activateFire(LivingEntity shooter) {
+        if(isSecondaryUseActive(shooter)){
+            return fireBeam(shooter);
         }
-        HitResult hitResult = getHitResult(player);
+        HitResult hitResult = getHitResult(shooter);
         Vec3 target = hitResult.getLocation();
-        double xDist = target.x - player.getX();
-        double yDist = target.y - player.getY();
-        double zDist = target.z - player.getZ();
-        SmallFireball fireball = new SmallFireball(player.level, player, xDist, yDist, zDist);
-        fireball.setPos(fireball.getX(), player.getEyeY() - 0.1D, fireball.getZ()); // similar positioning to Snowball
-        player.level.levelEvent(null, SHOOT_FIREBALL_EVENT_ID, player.blockPosition(), 0);
-        player.level.addFreshEntity(fireball);
+        double xDist = target.x - shooter.getX();
+        double yDist = target.y - shooter.getY();
+        double zDist = target.z - shooter.getZ();
+        SmallFireball fireball = new SmallFireball(shooter.level, shooter, xDist, yDist, zDist);
+        fireball.setPos(fireball.getX(), shooter.getEyeY() - 0.1D, fireball.getZ()); // similar positioning to Snowball
+        shooter.level.levelEvent(null, SHOOT_FIREBALL_EVENT_ID, shooter.blockPosition(), 0);
+        shooter.level.addFreshEntity(fireball);
         return false;
     }
 
-    public static boolean activateIce(Player player) {
-        if(player.isSecondaryUseActive()){
-            return fireBeam(player);
+    public static boolean activateIce(LivingEntity shooter) {
+        if(isSecondaryUseActive(shooter)){
+            return fireBeam(shooter);
         }
-        Snowball snowball = new Snowball(player.level, player);
-        snowball.shootFromRotation(player, player.getXRot(), player.getYRot(), 0, 1.5F, 0.0F);
+        Snowball snowball = new Snowball(shooter.level, shooter);
+        snowball.shootFromRotation(shooter, shooter.getXRot(), shooter.getYRot(), 0, 1.5F, 0.0F);
         snowball.getTags().add(ICE_SUPERPOWER_TAG);
-        player.level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.SNOWBALL_THROW, SoundSource.NEUTRAL, 0.5F, 0.4F / (player.level.getRandom().nextFloat() * 0.4F + 0.8F));
-        player.level.addFreshEntity(snowball);
+        shooter.level.playSound(null, shooter.getX(), shooter.getY(), shooter.getZ(), SoundEvents.SNOWBALL_THROW, SoundSource.NEUTRAL, 0.5F, 0.4F / (shooter.level.getRandom().nextFloat() * 0.4F + 0.8F));
+        shooter.level.addFreshEntity(snowball);
         return false;
     }
 
-    public static void applyFreezeDamage(Entity entity, int base) {
-        if(entity.canFreeze()){
-            entity.hurt(DamageSource.FREEZE, entity.getType().is(EntityTypeTags.FREEZE_HURTS_EXTRA_TYPES) ? 5 * base : base);
+    public static void applyIceballDamage(Entity target, Entity source, Entity trueSource, int base) {
+        if(target.canFreeze()){
+            target.hurt(iceball(source, trueSource), target.getType().is(EntityTypeTags.FREEZE_HURTS_EXTRA_TYPES) ? 5 * base : base);
         }
+    }
+
+    public static DamageSource iceball(Entity iceball, @Nullable Entity pIndirectEntity) {
+        return pIndirectEntity == null ?
+                (new IndirectEntityDamageSource("freeze", iceball, iceball)).setProjectile() :
+                (new IndirectEntityDamageSource("freeze", iceball, pIndirectEntity)).setProjectile();
     }
 
     public static boolean activateEarth(LivingEntity shooter){
@@ -165,7 +178,7 @@ public class SuperpowerHelper {
                 if(blockState.is(SuperPowers.TELEKINESIS_IMMUNE)){
                     return false;
                 }
-                fireBeamRaw(shooter);
+                //fireBeamRaw(shooter);
                 TelekinesisBlockEntity telekinesisBlockEntity = TelekinesisBlockEntity.telekinesis(shooter.level, blockPos, blockState, shooter);
                 cap.setSuperpowerTarget(telekinesisBlockEntity);
                 return true;
@@ -174,7 +187,7 @@ public class SuperpowerHelper {
         }).orElse(false);
     }
 
-    public static void tickActivePowers(Player shooter) {
+    public static void tickActivePowers(LivingEntity shooter) {
         SuperpowerCapability.getOptional(shooter).ifPresent(cap -> {
             if (cap.isSuperpowerActive()) {
                 cap.getActiveSuperpower().ifPresent(superpower -> onActiveSuperpower(shooter, superpower, cap.getActiveSuperpowerTicks()));
@@ -185,7 +198,7 @@ public class SuperpowerHelper {
         });
     }
 
-    private static void onActiveSuperpower(Player shooter, Superpower superpower, int ticksFiringBeam) {
+    private static void onActiveSuperpower(LivingEntity shooter, Superpower superpower, int ticksFiringBeam) {
         HitResult hitResult = getHitResult(shooter);
         Either<EntityHitResult, BlockHitResult> hitResultEither;
         if(hitResult instanceof EntityHitResult entityHitResult) hitResultEither = Either.left(entityHitResult);
@@ -203,6 +216,10 @@ public class SuperpowerHelper {
                 if(blockHitResult.getType() != HitResult.Type.MISS && !shooter.level.isClientSide){
                     BlockPos blockPos = blockHitResult.getBlockPos();
                     BlockState blockState = shooter.level.getBlockState(blockPos);
+                    if(blockState.is(SuperPowers.FIRE_IMMUNE)){
+                        return false;
+                    }
+
                     if(!blockState.isAir() && !blockState.getMaterial().isLiquid()){
                         shooter.level.gameEvent(shooter, GameEvent.BLOCK_PLACE, blockPos);
                         shooter.level.setBlockAndUpdate(blockPos, Blocks.LAVA.defaultBlockState());
@@ -223,13 +240,14 @@ public class SuperpowerHelper {
                 if(blockHitResult.getType() != HitResult.Type.MISS && !shooter.level.isClientSide){
                     Vec3 position = blockHitResult.getLocation();
                     BlockPos blockPos = blockHitResult.getBlockPos();
+                    Direction direction = blockHitResult.getDirection();
                     BlockState blockState = shooter.level.getBlockState(blockPos);
                     if(!blockState.isAir() && !blockState.getMaterial().isLiquid()){
-                        BlockPos above = blockPos.above();
-                        BlockState aboveState = shooter.level.getBlockState(above);
-                        if(aboveState.isAir() || aboveState.getMaterial().isReplaceable()){
+                        BlockPos offset = blockPos.offset(direction.getNormal());
+                        BlockState offsetState = shooter.level.getBlockState(offset);
+                        if(offsetState.isAir() || offsetState.getMaterial().isReplaceable()){
                             if(shooter.level.getEntitiesOfClass(AreaEffectCloud.class, AABB.ofSize(position, 1, 1, 1)).isEmpty()){
-                                AreaEffectCloud areaEffectCloud = new AreaEffectCloud(shooter.level, above.getX() + 0.5, above.getY(), above.getZ() + 0.5);
+                                AreaEffectCloud areaEffectCloud = new AreaEffectCloud(shooter.level, offset.getX() + 0.5, offset.getY(), offset.getZ() + 0.5);
                                 areaEffectCloud.setRadius(0.5F);
                                 areaEffectCloud.setDuration(200);
                                 areaEffectCloud.addEffect(new MobEffectInstance(SuperPowers.ELECTRIC_SHOCK_EFFECT.get(), 1));
@@ -245,11 +263,15 @@ public class SuperpowerHelper {
         }
     }
 
-    public static void tickIce(Entity ignoredShooter, Either<EntityHitResult, BlockHitResult> hitResultEither, int ticksFiringBeam){
+    public static void tickIce(Entity shooter, Either<EntityHitResult, BlockHitResult> hitResultEither, int ticksFiringBeam){
         if(ticksFiringBeam % 10 == 0){
             hitResultEither.ifLeft(entityHitResult -> {
                 Entity entity = entityHitResult.getEntity();
-                entity.setTicksFrozen(600); // 15 seconds * 2 since it decays at 2 tps
+                if(!entity.level.isClientSide && entity instanceof LivingEntity living){
+                    // apply freeze effect for 15 seconds
+                    // also apply -15% * 7 movement speed modifier (amplifier of 6) to prevent any movement
+                    living.addEffect(new MobEffectInstance(SuperPowers.FROZEN.get(), 300, 6, false, false, true), shooter);
+                }
             });
         }
     }
@@ -257,32 +279,59 @@ public class SuperpowerHelper {
     public static void tickEarth(Entity ignoredShooter, Either<EntityHitResult, BlockHitResult> ignoredHitResultEither, int ignoredTicksFiringBeam){
     }
 
-    public static void tickTelekinesis(Entity shooter, Either<EntityHitResult, BlockHitResult> ignoredHitResultEither, int ignoredTicksFiringBeam){
+    public static void tickTelekinesis(Entity shooter, Either<EntityHitResult, BlockHitResult> ignoredHitResultEither, int ticksFiringBeam){
         SuperpowerCapability.getOptional(shooter).ifPresent(cap -> {
-            cap.getSuperpowerTarget(shooter.level).ifPresent(target -> onTelekinesisTick(shooter, target));
+            cap.getSuperpowerTarget(shooter.level).ifPresent(target -> onTelekinesisTick(shooter, target, ticksFiringBeam));
         });
     }
 
-    private static void onTelekinesisTick(Entity shooter, Entity target) {
-        HitResult hitResult = getHitResult(shooter, TELEKINETIC_HOLD_DISTANCE, (entity) -> canBeHit(entity) && entity != target);
-        Vec3 position = hitResult.getLocation();
-        double xDist = position.x - target.getX();
-        double yDist = position.y - target.getY();
-        double zDist = position.z - target.getZ();
-        double dist = Math.sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
-        if (dist != 0.0D) {
-            double xPower = xDist / dist * 0.1D;
-            double yPower = yDist / dist * 0.1D;
-            double zPower = zDist / dist * 0.1D;
-            target.setDeltaMovement(target.getDeltaMovement().add(xPower, yPower, zPower).scale(0.95D));
+    private static void onTelekinesisTick(Entity shooter, Entity target, int ignoredTicksFiringBeam) {
+        if(!isSecondaryUseActive(shooter)){
+            HitResult hitResult = getHitResult(shooter, TELEKINETIC_HOLD_DISTANCE, (entity) -> canBeHit(entity) && entity != target);
+            Vec3 position = hitResult.getLocation();
+            double moveXDist = position.x - target.getX();
+            double moveYDist = position.y - target.getY();
+            double moveZDist = position.z - target.getZ();
+            double moveDist = Mth.length(moveXDist, moveYDist, moveZDist);
+            if (moveDist != 0.0D) {
+                double xPower = moveXDist / moveDist * 0.1D;
+                double yPower = moveYDist / moveDist * 0.1D;
+                double zPower = moveZDist / moveDist * 0.1D;
+                target.setDeltaMovement(target.getDeltaMovement().add(xPower, yPower, zPower).scale(0.95D));
+            }
+        } else{
+            target.setDeltaMovement(Vec3.ZERO);
+        }
+
+        if(shooter.level.isClientSide){
+            double animationScale = 1.0F;
+            double shootXDist = target.getX() - shooter.getX();
+            double shootYDist = target.getY(0.5D) - shooter.getEyeY();
+            double shootZDist = target.getZ() - shooter.getZ();
+            double shootDist = Mth.length(shootXDist, shootYDist, shootZDist);
+            shootXDist /= shootDist;
+            shootYDist /= shootDist;
+            shootZDist /= shootDist;
+            double randomDouble = shooter.level.random.nextDouble();
+
+            while(randomDouble < shootDist) {
+                randomDouble += 1.8D - animationScale + shooter.level.random.nextDouble() * (1.7D - animationScale);
+                shooter.level.addParticle(new DustParticleOptions(new Vector3f(Superpower.TELEKINESIS.getDyeColor().getTextureDiffuseColors()), 1.0F),
+                        shooter.getX() + shootXDist * randomDouble, shooter.getEyeY() + shootYDist * randomDouble, shooter.getZ() + shootZDist * randomDouble,
+                        0.0D, 0.0D, 0.0D);
+            }
         }
     }
 
-    public static void deactivateLightning(Player shooter){
+    private static boolean isSecondaryUseActive(Entity shooter) {
+        return shooter.isShiftKeyDown();
+    }
+
+    public static void deactivateLightning(LivingEntity shooter){
         deactivateBeam(shooter);
     }
 
-    private static void deactivateBeam(Player shooter){
+    private static void deactivateBeam(LivingEntity shooter){
         SuperpowerCapability.getOptional(shooter).ifPresent(cap -> {
             shooter.level.getEntitiesOfClass(EnergyBeam.class, shooter.getBoundingBox().inflate(1D),
                             energyBeam -> energyBeam.getOwner() == shooter)
@@ -290,23 +339,23 @@ public class SuperpowerHelper {
         });
     }
 
-    public static void deactivateFire(Player shooter){
+    public static void deactivateFire(LivingEntity shooter){
         deactivateBeam(shooter);
     }
 
-    public static void deactivateIce(Player shooter){
+    public static void deactivateIce(LivingEntity shooter){
         deactivateBeam(shooter);
     }
 
-    public static void deactivateEarth(Entity ignoredShooter){
+    public static void deactivateEarth(LivingEntity ignoredShooter){
     }
 
-    public static void deactivateTelekinesis(Player shooter) {
+    public static void deactivateTelekinesis(LivingEntity shooter) {
         SuperpowerCapability.getOptional(shooter).ifPresent(cap -> {
-            deactivateBeam(shooter);
+            //deactivateBeam(shooter);
             cap.getSuperpowerTarget(shooter.level).ifPresent(target -> {
                 if(target instanceof TelekinesisBlockEntity tbe) tbe.setReleased(true);
-                if(shooter.isSecondaryUseActive()){
+                if(isSecondaryUseActive(shooter)){
                     shootFromRotation(target, shooter, shooter.getXRot(), shooter.getYRot(), 0.0F, 3.0F, 0.0F);
                     target.hurtMarked = true;
                 }
@@ -346,5 +395,27 @@ public class SuperpowerHelper {
         copy.loadSaveData(saveAbilities);
         copy.mayfly = mayFly;
         return copy;
+    }
+
+    public static void tickParticles(Entity target, ParticleOptions particleType, @Nullable Integer color) {
+        boolean makeParticle;
+        if (target.isInvisible()) {
+            makeParticle = target.level.random.nextInt(15) == 0;
+        } else {
+            makeParticle = target.level.random.nextBoolean();
+        }
+
+        if (makeParticle) {
+            double xSpeed = color != null ? (color >> 16 & 255) / 255.0 : target.getDeltaMovement().x;
+            double ySpeed = color != null ? (color >> 8 & 255) / 255.0 : target.getDeltaMovement().y;
+            double zSpeed = color != null ? (color & 255) / 255.0 : target.getDeltaMovement().z;
+            if(!target.level.isClientSide)
+                ((ServerLevel)target.level).sendParticles(
+                        particleType,
+                        target.getRandomX(1), target.getRandomY(), target.getRandomZ(1),
+                        0,
+                        xSpeed, ySpeed, zSpeed,
+                        1);
+        }
     }
 }

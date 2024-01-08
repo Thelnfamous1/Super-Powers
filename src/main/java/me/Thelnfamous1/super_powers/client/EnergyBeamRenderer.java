@@ -44,11 +44,11 @@ public class EnergyBeamRenderer<T extends EnergyBeam> extends EntityRenderer<T> 
                         .map(target -> (double)target.distanceTo(owner))
                         .orElse(SuperpowerHelper.MAX_HIT_DISTANCE));
                 double distanceTo = hitResult.distanceTo(owner);
-                float[] beamColor = cap.getActiveSuperpower()
+                cap.getActiveSuperpower()
                         .map(Superpower::getDyeColor)
-                        .orElse(DyeColor.WHITE)
-                        .getTextureDiffuseColors();
-                drawBeams(energyBeam, beamColor, pPoseStack, distanceTo, SPEED_MODIFIER, pPartialTicks);
+                        .map(DyeColor::getTextureDiffuseColors)
+                        .ifPresent(beamColor ->
+                                drawBeams(energyBeam, beamColor, pPoseStack, distanceTo, SPEED_MODIFIER, pPartialTicks));
             });
         }
     }
