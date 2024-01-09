@@ -114,6 +114,15 @@ public class SuperPowers {
                 }
             }
         });
+        /*
+        MinecraftForge.EVENT_BUS.addListener((PlayerEvent.StartTracking event) -> {
+            if(event.getEntity() instanceof ServerPlayer tracker && event.getTarget() instanceof ServerPlayer tracked){
+                SuperpowerCapability.getOptional(tracked)
+                        .ifPresent(cap -> SPNetwork.SYNC_CHANNEL.send(PacketDistributor.PLAYER.with(() -> tracker),
+                                new S2CUpdateSuperpowerPacket(tracked, cap)));
+            }
+        });
+         */
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         ENTITY_TYPES.register(modEventBus);
         MOB_EFFECTS.register(modEventBus);

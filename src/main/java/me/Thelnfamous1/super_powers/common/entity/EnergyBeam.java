@@ -35,8 +35,7 @@ public class EnergyBeam extends Entity implements OwnableEntity {
     public EnergyBeam(EntityType<?> type, Level world, LivingEntity shooter) {
         super(type, world);
         this.setOwner(shooter);
-        Vec3 offset = offsetInFrontOfEntity(shooter);
-        this.moveTo(offset.x, offset.y, offset.z, shooter.getYRot(), shooter.getXRot());
+        this.updatePositionAndRotation(shooter);
     }
 
     @Override
@@ -63,7 +62,7 @@ public class EnergyBeam extends Entity implements OwnableEntity {
     }
 
     public void updatePositionAndRotation(Entity owner) {
-        Vec3 offset = offsetInFrontOfEntity(owner);
+        Vec3 offset = owner.position().add(this.getOffsetVector(owner));
         this.setPos(offset.x, offset.y, offset.z);
         this.setYRot(this.boundDegrees(owner.getYRot()));
         this.setXRot(this.boundDegrees(owner.getXRot()));
@@ -71,9 +70,9 @@ public class EnergyBeam extends Entity implements OwnableEntity {
         this.xRotO = this.boundDegrees(owner.xRotO);
     }
 
-    private static Vec3 offsetInFrontOfEntity(Entity entity) {
-        return new Vec3(entity.getX(), entity.getY(0.5), entity.getZ())
-                .add(entity.getLookAngle().scale(1.0D));
+    private Vec3 getOffsetVector(Entity owner) {
+        Vec3 viewVector = owner.getViewVector(1.0F).scale(owner.getBbWidth() * 0.5F + this.getBbWidth() * 0.5F);
+        return new Vec3(viewVector.x, owner.getBbHeight() * 0.5F, viewVector.z);
     }
 
     private float boundDegrees(float degrees){

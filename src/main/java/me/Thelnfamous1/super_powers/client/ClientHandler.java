@@ -39,6 +39,9 @@ public class ClientHandler {
         MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingIn event) -> {
             SPNetwork.SYNC_CHANNEL.sendToServer(new C2SUpdateSuperpowerPacket(C2SUpdateSuperpowerPacket.Action.SYNC));
         });
+        MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.Clone event) -> {
+            SPNetwork.SYNC_CHANNEL.sendToServer(new C2SUpdateSuperpowerPacket(C2SUpdateSuperpowerPacket.Action.SYNC));
+        });
     }
 
     public static void tickInput(LocalPlayer player){

@@ -21,7 +21,7 @@ public class FrozenEffect extends MobEffect implements CustomEffectParticle{
 
     @Override
     public void applyEffectTick(LivingEntity pLivingEntity, int pAmplifier) {
-        if(pLivingEntity.canFreeze() && !pLivingEntity.isFullyFrozen())
+        if(!pLivingEntity.level.isClientSide && pLivingEntity.canFreeze())
             // LivingEntity#aiStep removes frost at a rate of 2 ticks per tick, so add 2 extra ticks to ensure frozen
             pLivingEntity.setTicksFrozen(pLivingEntity.getTicksRequiredToFreeze() + 2);
     }

@@ -1,9 +1,12 @@
 package me.Thelnfamous1.super_powers.common.network;
 
 import me.Thelnfamous1.super_powers.SuperPowers;
+import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapabilityInterface;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkRegistry;
+import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 import java.util.Optional;
@@ -25,5 +28,11 @@ public class SPNetwork {
         SYNC_CHANNEL.registerMessage(INDEX++, C2SUpdateSuperpowerPacket.class, C2SUpdateSuperpowerPacket::write, C2SUpdateSuperpowerPacket::new, C2SUpdateSuperpowerPacket::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
         SYNC_CHANNEL.registerMessage(INDEX++, S2CUpdateSuperpowerPacket.class, S2CUpdateSuperpowerPacket::write, S2CUpdateSuperpowerPacket::new, S2CUpdateSuperpowerPacket::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         SYNC_CHANNEL.registerMessage(INDEX++, C2SEnergyBeamPacket.class, C2SEnergyBeamPacket::write, C2SEnergyBeamPacket::new, C2SEnergyBeamPacket::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+    }
+
+    public static void sendSyncPacket(ServerPlayer player, SuperpowerCapabilityInterface cap) {
+        SYNC_CHANNEL.send(
+                PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player),
+                new S2CUpdateSuperpowerPacket(player, cap));
     }
 }

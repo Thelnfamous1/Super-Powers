@@ -7,7 +7,6 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
@@ -52,7 +51,7 @@ public class C2SUpdateSuperpowerPacket {
                                 if(this.superpower.activate(player)) cap.setActiveSuperpower(this.superpower);
                             }
                         }
-                        sendSyncPacket(player, cap);
+                        SPNetwork.sendSyncPacket(player, cap);
                     });
                     case DEACTIVATE -> SuperpowerCapability.getOptional(player).ifPresent(cap -> {
                         if(this.superpower != null && cap.hasSuperpower(this.superpower)){
@@ -60,9 +59,9 @@ public class C2SUpdateSuperpowerPacket {
                                 this.deactivateSuperpower(player, cap);
                             }
                         }
-                        sendSyncPacket(player, cap);
+                        SPNetwork.sendSyncPacket(player, cap);
                     });
-                    case SYNC -> SuperpowerCapability.getOptional(player).ifPresent(cap -> sendSyncPacket(player, cap));
+                    case SYNC -> SuperpowerCapability.getOptional(player).ifPresent(cap -> SPNetwork.sendSyncPacket(player, cap));
                 }
             }
         });
@@ -75,12 +74,6 @@ public class C2SUpdateSuperpowerPacket {
             superpower.deactivate(player);
             return superpower;
         }).orElse(null);
-    }
-
-    private static void sendSyncPacket(ServerPlayer player, SuperpowerCapabilityInterface cap) {
-        SPNetwork.SYNC_CHANNEL.send(
-                PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player),
-                new S2CUpdateSuperpowerPacket(player, cap));
     }
 
     public enum Action{

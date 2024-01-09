@@ -8,7 +8,6 @@ import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import me.Thelnfamous1.super_powers.SuperPowers;
 import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapability;
 import me.Thelnfamous1.super_powers.common.capability.SuperpowerCapabilityInterface;
-import me.Thelnfamous1.super_powers.common.network.S2CUpdateSuperpowerPacket;
 import me.Thelnfamous1.super_powers.common.network.SPNetwork;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -16,7 +15,6 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.PacketDistributor;
 
 import java.util.Collection;
 import java.util.List;
@@ -91,7 +89,7 @@ public class SPCommands {
             capability.addSuperpower(superpower);
         }
 
-        SPNetwork.SYNC_CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), new S2CUpdateSuperpowerPacket(player, capability));
+        SPNetwork.sendSyncPacket(player, capability);
         pSource.sendSuccess(Component.translatable(COMMANDS_SUPERPOWER_GIVE_ALL, player.getDisplayName()), true);
         return 0;
     }
@@ -102,7 +100,7 @@ public class SPCommands {
             capability.removeSuperpower(superpower);
         }
 
-        SPNetwork.SYNC_CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), new S2CUpdateSuperpowerPacket(player, capability));
+        SPNetwork.sendSyncPacket(player, capability);
         pSource.sendSuccess(Component.translatable(COMMANDS_SUPERPOWER_REMOVE_ALL, player.getDisplayName()), true);
         return 0;
     }
@@ -112,7 +110,7 @@ public class SPCommands {
         if (!capability.addSuperpower(superpower)) {
             throw new DynamicCommandExceptionType((key) -> Component.translatable(COMMANDS_SUPERPOWER_GIVE_FAILURE, player.getDisplayName(), key)).create(superpower.getSerializedName());
         } else {
-            SPNetwork.SYNC_CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), new S2CUpdateSuperpowerPacket(player, capability));
+            SPNetwork.sendSyncPacket(player, capability);
             pSource.sendSuccess(Component.translatable(COMMANDS_SUPERPOWER_GIVE_SUCCESS, player.getDisplayName(), superpower.getColoredDisplayName()), true);
             return 0;
         }
@@ -123,9 +121,10 @@ public class SPCommands {
         if (!capability.removeSuperpower(superpower)) {
             throw new DynamicCommandExceptionType((key) -> Component.translatable(COMMANDS_SUPERPOWER_REMOVE_FAILURE, player.getDisplayName(), key)).create(superpower.getSerializedName());
         } else {
-            SPNetwork.SYNC_CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), new S2CUpdateSuperpowerPacket(player, capability));
+            SPNetwork.sendSyncPacket(player, capability);
             pSource.sendSuccess(Component.translatable(COMMANDS_SUPERPOWER_REMOVE_SUCCESS, player.getDisplayName(), superpower.getColoredDisplayName()), true);
             return 0;
         }
     }
+
 }

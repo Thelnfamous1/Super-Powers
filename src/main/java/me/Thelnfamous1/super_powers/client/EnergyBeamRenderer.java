@@ -48,12 +48,12 @@ public class EnergyBeamRenderer<T extends EnergyBeam> extends EntityRenderer<T> 
                         .map(Superpower::getDyeColor)
                         .map(DyeColor::getTextureDiffuseColors)
                         .ifPresent(beamColor ->
-                                drawBeams(energyBeam, beamColor, pPoseStack, distanceTo, SPEED_MODIFIER, pPartialTicks));
+                                drawBeams(energyBeam, owner, beamColor, pPoseStack, distanceTo, SPEED_MODIFIER, pPartialTicks));
             });
         }
     }
 
-    private static void drawBeams(EnergyBeam energyBeam, float[] color, PoseStack pPoseStack, double distance, float speedModifier, float partialTicks) {
+    private static void drawBeams(EnergyBeam energyBeam, Entity owner, float[] color, PoseStack pPoseStack, double distance, float speedModifier, float partialTicks) {
         VertexConsumer builder;
         long gameTime = energyBeam.level.getGameTime();
         double v = gameTime * speedModifier;

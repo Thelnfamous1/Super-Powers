@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 public class SuperpowerCapabilityImplementation implements SuperpowerCapabilityInterface {
     public static final String TAG_KEY = "Superpowers";
     private Set<Superpower> superpowers = new HashSet<>();
-    private boolean firingBeam;
     private int activeSuperpowerTicks;
     @Nullable
     private Entity superpowerTarget;
